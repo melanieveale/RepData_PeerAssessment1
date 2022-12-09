@@ -1,33 +1,47 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
 author: "Melanie Veale"
-date: "`r Sys.Date()`"
+date: "2022-12-09"
 output: 
   html_document:
     keep_md: true
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  echo = TRUE,
-  message = FALSE,
-  warning = FALSE
-  )
-```
+
 
 ## Loading and preprocessing the data
 
 Let's read the data and look at some of the basic structure with `str` and `summary`.
 Converting the `date` column to date format will probably come in handy.
 
-```{r}
+
+```r
 df = read.csv("activity.csv")
 df$date = as.Date(df$date)
 str(df)
 ```
 
-```{r}
+```
+## 'data.frame':	17568 obs. of  3 variables:
+##  $ steps   : int  NA NA NA NA NA NA NA NA NA NA ...
+##  $ date    : Date, format: "2012-10-01" "2012-10-01" ...
+##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
+```
+
+
+```r
 summary(df)
+```
+
+```
+##      steps             date               interval     
+##  Min.   :  0.00   Min.   :2012-10-01   Min.   :   0.0  
+##  1st Qu.:  0.00   1st Qu.:2012-10-16   1st Qu.: 588.8  
+##  Median :  0.00   Median :2012-10-31   Median :1177.5  
+##  Mean   : 37.38   Mean   :2012-10-31   Mean   :1177.5  
+##  3rd Qu.: 12.00   3rd Qu.:2012-11-15   3rd Qu.:1766.2  
+##  Max.   :806.00   Max.   :2012-11-30   Max.   :2355.0  
+##  NA's   :2304
 ```
 
 The first draft of the daily pattern plot below also made clear
@@ -36,7 +50,8 @@ because it leaves gaps (e.g. jumping 50 -> 55 -> 100),
 so let's format that as an actual time.
 Will have to ignore the extraneous default date and seconds later when labeling.
 
-```{r}
+
+```r
 library(dplyr)
 df$interval = df$interval %>%
   sprintf("%04d", .) %>%
@@ -44,11 +59,23 @@ df$interval = df$interval %>%
 summary(df)
 ```
 
+```
+##      steps             date               interval                  
+##  Min.   :  0.00   Min.   :2012-10-01   Min.   :2022-12-09 00:00:00  
+##  1st Qu.:  0.00   1st Qu.:2012-10-16   1st Qu.:2022-12-09 05:58:45  
+##  Median :  0.00   Median :2012-10-31   Median :2022-12-09 11:57:30  
+##  Mean   : 37.38   Mean   :2012-10-31   Mean   :2022-12-09 11:57:30  
+##  3rd Qu.: 12.00   3rd Qu.:2012-11-15   3rd Qu.:2022-12-09 17:56:15  
+##  Max.   :806.00   Max.   :2012-11-30   Max.   :2022-12-09 23:55:00  
+##  NA's   :2304
+```
+
 ## What is the mean total number of steps taken per day?
 
 Write a function to do this, since we'll have to do it again later.
 
-```{r, message = FALSE}
+
+```r
 library(ggplot2)
 daily_totals_calc = function(df) {
   daily_totals = df %>%
@@ -67,8 +94,10 @@ daily_totals = daily_totals_calc(df)
 print(daily_totals$p)
 ```
 
-The mean (`r sprintf("%f",daily_totals$mean)`) 
-and median (`r sprintf("%f",daily_totals$median)`) are nearly identical,
+![](PA1_template_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+
+The mean (10766.188679) 
+and median (10765.000000) are nearly identical,
 right on top of each other in the histogram,
 so they had to be plotted with different line widths to actually see them.
 
@@ -76,7 +105,8 @@ so they had to be plotted with different line widths to actually see them.
 
 Let's plot the individual data points as well as the average just for fun.
 
-```{r}
+
+```r
 mean_daily_pattern = df %>%
   group_by(interval) %>%
   summarise(avg_steps = mean(steps, na.rm = TRUE))
@@ -96,8 +126,10 @@ ggplot(df, aes(x=interval, y=steps)) +
   scale_color_manual(name="", values = c("mean steps" = "red"))
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+
 On average, the most steps happen at
-`r strftime(avg_most_active, format="%H:%M")` - 
+08:35 - 
 during the morning commute maybe!
 
 ## Imputing missing values
@@ -105,33 +137,45 @@ during the morning commute maybe!
 From the summary stats at the beginning, we saw that only the `steps` column has NAs.
 Get those numbers again:
 
-```{r}
+
+```r
 total_na = sum(is.na(df$steps))
 total_rows = nrow(df)
 ```
 
-Specifically, we have `r total_na` NAs out of `r total_rows` total rows.
-About `r sprintf("%.2f", 100*total_na/total_rows)`%.
+Specifically, we have 2304 NAs out of 17568 total rows.
+About 13.11%.
 
 Let's first try the simplest strategy, replacing all NAs with the global mean.
 
-```{r}
+
+```r
 df_imputed = data.frame(df)
 df_imputed$steps[is.na(df$steps)] = mean(df$steps, na.rm=TRUE)
 str(df_imputed)
 ```
 
+```
+## 'data.frame':	17568 obs. of  3 variables:
+##  $ steps   : num  37.4 37.4 37.4 37.4 37.4 ...
+##  $ date    : Date, format: "2012-10-01" "2012-10-01" ...
+##  $ interval: POSIXct, format: "2022-12-09 00:00:00" "2022-12-09 00:05:00" ...
+```
+
 Now look at the daily totals again.
 
-```{r}
+
+```r
 daily_totals_imputed = daily_totals_calc(df_imputed)
 print(daily_totals_imputed$p)
 ```
 
-Now the mean daily total is `r sprintf("%f",daily_totals_imputed$mean)` 
-and median is `r sprintf("%f",daily_totals_imputed$median)`,
-almost identical to the old mean (`r sprintf("%f",daily_totals$mean)`) 
-and median (`r daily_totals$median`).
+![](PA1_template_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
+
+Now the mean daily total is 10766.188679 
+and median is 10766.188679,
+almost identical to the old mean (10766.188679) 
+and median (10765).
 The histogram though, shows a clear new spike at the mean/median.
 It seems the NAs are probably concentrated in certain days,
 rather than spread out.
@@ -140,17 +184,27 @@ rather than spread out.
 
 First, create the label for weekdays vs weekends, and make sure it looks good.
 
-```{r}
+
+```r
 df_imputed$day_type = as.factor(case_when(
   weekdays(df_imputed$date) %in% c("Saturday", "Sunday") ~ "weekend",
   TRUE ~ "weekday"))
 str(df_imputed)
 ```
 
+```
+## 'data.frame':	17568 obs. of  4 variables:
+##  $ steps   : num  37.4 37.4 37.4 37.4 37.4 ...
+##  $ date    : Date, format: "2012-10-01" "2012-10-01" ...
+##  $ interval: POSIXct, format: "2022-12-09 00:00:00" "2022-12-09 00:05:00" ...
+##  $ day_type: Factor w/ 2 levels "weekday","weekend": 1 1 1 1 1 1 1 1 1 1 ...
+```
+
 Now plot the daily patterns again, comparing weekdays and weekends.
 Simplify it this time to only give the mean timeseries.
 
-```{r}
+
+```r
 mean_daily_pattern_imputed = df_imputed %>%
   group_by(interval, day_type) %>%
   summarise(avg_steps = mean(steps, na.rm = TRUE))
@@ -159,5 +213,7 @@ ggplot(mean_daily_pattern_imputed, aes(x=interval, y=avg_steps)) +
   scale_x_datetime(date_label = "%H:%M") +
   facet_wrap(~day_type, ncol=1)
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
 
 Weekends include less early-morning activity, which makes a lot of sense!
